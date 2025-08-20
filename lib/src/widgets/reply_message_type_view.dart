@@ -32,6 +32,7 @@ class ReplyMessageTypeView extends StatelessWidget {
   const ReplyMessageTypeView({
     super.key,
     required this.message,
+    this.stream,
     this.customMessageReplyViewBuilder,
     this.sendMessageConfig,
   });
@@ -44,6 +45,9 @@ class ReplyMessageTypeView extends StatelessWidget {
 
   /// Provides configuration for send message
   final SendMessageConfiguration? sendMessageConfig;
+
+  /// Provides Stream for the reply message view.
+  final Stream<String>? stream;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +85,23 @@ class ReplyMessageTypeView extends StatelessWidget {
             ),
           ],
         ),
+      MessageType.stream => StreamBuilder<String>(
+          stream: stream,
+          builder: (context, AsyncSnapshot<String> snapshot) {
+            if (snapshot.hasData) {
+              return Text(
+                snapshot.data ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: sendMessageConfig?.replyMessageColor ?? Colors.black,
+                ),
+              );
+            } else {
+              return Text('Error: ${snapshot.error}');
+            }
+          }),
       MessageType.custom when customMessageReplyViewBuilder != null =>
         customMessageReplyViewBuilder!(message),
       MessageType.custom || MessageType.text => Text(
