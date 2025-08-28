@@ -20,6 +20,7 @@
  * SOFTWARE.
  */
 import 'package:chatview_utils/chatview_utils.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -92,80 +93,58 @@ class _StreamMessageViewState extends State<StreamMessageView>
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final stream = widget.message.stream;
+    final isSelectable = widget.inComingChatBubbleConfig?.isSelectable ?? false;
     return Stack(
       clipBehavior: Clip.none,
       children: [
         StreamBuilder<String>(
-            stream: stream,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                _controller.forward();
-              }
+          stream: stream,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              _controller.forward();
 
-              return Container(
-                constraints: BoxConstraints(
-                    maxWidth: widget.chatBubbleMaxWidth ??
-                        MediaQuery.of(context).size.width * 0.75),
-                padding: _padding ??
-                    const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                margin: _margin ??
-                    EdgeInsets.fromLTRB(5, 0, 6,
-                        widget.message.reaction.reactions.isNotEmpty ? 15 : 2),
-                decoration: BoxDecoration(
-                  color:
-                      widget.highlightMessage ? widget.highlightColor : _color,
-                  borderRadius: _borderRadius(widget.message.message),
-                ),
-                child: snapshot.connectionState.isWaiting
-                    ? Shimmer.fromColors(
-                        baseColor: Colors.grey.shade800,
-                        highlightColor: Colors.grey.shade600,
-                        child: Container(
-                          constraints: BoxConstraints(
-                              maxWidth: widget.chatBubbleMaxWidth ??
-                                  MediaQuery.of(context).size.width * 0.75),
-                          padding: _padding ??
-                              const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                          margin: _margin ??
-                              EdgeInsets.fromLTRB(
-                                  5,
-                                  0,
-                                  6,
-                                  widget.message.reaction.reactions.isNotEmpty
-                                      ? 15
-                                      : 2),
-                          decoration: BoxDecoration(
-                            color: widget.highlightMessage
-                                ? widget.highlightColor
-                                : _color,
-                            borderRadius: _borderRadius(widget.message.message),
+              final messageText = snapshot.data!;
+
+              final child = messageText.isUrl
+                  ? LinkPreview(
+                      linkPreviewConfig: _linkPreviewConfig,
+                      url: messageText,
+                    )
+                  : Text(
+                      messageText,
+                      style: _textStyle ??
+                          textTheme.bodyMedium!.copyWith(
+                            color: Colors.white,
+                            fontSize: 16,
                           ),
-                        ),
-                      )
-                    : FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: snapshot.data!.isUrl
-                            ? LinkPreview(
-                                linkPreviewConfig: _linkPreviewConfig,
-                                url: snapshot.data!,
-                              )
-                            : Text(
-                                snapshot.data!,
-                                style: _textStyle ??
-                                    textTheme.bodyMedium!.copyWith(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                              ),
-                      ),
+                    );
+
+              return _bubbleContainer(
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: isSelectable
+                      ? SelectableRegion(
+                          selectionControls: CupertinoTextSelectionControls(),
+                          child: child,
+                        )
+                      : child,
+                ),
               );
-            }),
+            } else {
+              return _bubbleContainer(
+                child: Shimmer.fromColors(
+                  baseColor: Colors.grey.shade800,
+                  highlightColor: Colors.grey.shade600,
+                  child: Container(
+                    height: 16,
+                    width: 120, // placeholder width
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              );
+            }
+          },
+        ),
         if (widget.message.reaction.reactions.isNotEmpty)
           ReactionWidget(
             key: widget.key,
@@ -206,4 +185,27 @@ class _StreamMessageViewState extends State<StreamMessageView>
   Color get _color => widget.isMessageBySender
       ? widget.outgoingChatBubbleConfig?.color ?? Colors.purple
       : widget.inComingChatBubbleConfig?.color ?? Colors.grey.shade500;
+
+  Widget _bubbleContainer({required Widget child}) {
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: widget.chatBubbleMaxWidth ??
+            MediaQuery.of(context).size.width * 0.75,
+      ),
+      padding:
+          _padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: _margin ??
+          EdgeInsets.fromLTRB(
+            5,
+            0,
+            6,
+            widget.message.reaction.reactions.isNotEmpty ? 15 : 2,
+          ),
+      decoration: BoxDecoration(
+        color: widget.highlightMessage ? widget.highlightColor : _color,
+        borderRadius: _borderRadius(widget.message.message),
+      ),
+      child: child,
+    );
+  }
 }

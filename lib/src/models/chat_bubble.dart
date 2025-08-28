@@ -36,6 +36,7 @@ class ChatBubble {
     this.senderNameTextStyle,
     this.receiptsWidgetConfig,
     this.onMessageRead,
+    this.isSelectable = true,
   });
 
   /// Used for giving color of chat bubble.
@@ -66,4 +67,7 @@ class ChatBubble {
   /// Callback when a message has been displayed for the first
   /// time only
   final ValueSetter<Message>? onMessageRead;
+
+  /// Boolean to make text selectable or not
+  final bool isSelectable;
 }

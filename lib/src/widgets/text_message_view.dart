@@ -20,14 +20,14 @@
  * SOFTWARE.
  */
 import 'package:chatview_utils/chatview_utils.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../extensions/extensions.dart';
 import '../models/chat_bubble.dart';
-import '../models/config_models/link_preview_configuration.dart';
 import '../models/config_models/message_reaction_configuration.dart';
 import '../utils/constants/constants.dart';
-import 'link_preview.dart';
 import 'reaction_widget.dart';
 
 class TextMessageView extends StatelessWidget {
@@ -71,39 +71,51 @@ class TextMessageView extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final textMessage = message.message;
+    final isSelectable = inComingChatBubbleConfig?.isSelectable ?? false;
+    final baseWidget = Linkify(
+      onOpen: (link) async {
+        if (await canLaunchUrl(Uri.parse(link.url))) {
+          await launchUrl(
+            Uri.parse(link.url),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      },
+      text: textMessage,
+      style: _textStyle ??
+          textTheme.bodyMedium!.copyWith(
+            color: Colors.white,
+            fontSize: 16,
+          ),
+      linkStyle: const TextStyle(
+        color: Colors.lightBlue,
+        decoration: TextDecoration.underline,
+      ),
+    );
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Container(
-          constraints: BoxConstraints(
-              maxWidth: chatBubbleMaxWidth ??
-                  MediaQuery.of(context).size.width * 0.75),
-          padding: _padding ??
-              const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-          margin: _margin ??
-              EdgeInsets.fromLTRB(
-                  5, 0, 6, message.reaction.reactions.isNotEmpty ? 15 : 2),
-          decoration: BoxDecoration(
-            color: highlightMessage ? highlightColor : _color,
-            borderRadius: _borderRadius(textMessage),
-          ),
-          child: textMessage.isUrl
-              ? LinkPreview(
-                  linkPreviewConfig: _linkPreviewConfig,
-                  url: textMessage,
-                )
-              : Text(
-                  textMessage,
-                  style: _textStyle ??
-                      textTheme.bodyMedium!.copyWith(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+            constraints: BoxConstraints(
+                maxWidth: chatBubbleMaxWidth ??
+                    MediaQuery.of(context).size.width * 0.75),
+            padding: _padding ??
+                const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
                 ),
-        ),
+            margin: _margin ??
+                EdgeInsets.fromLTRB(
+                    5, 0, 6, message.reaction.reactions.isNotEmpty ? 15 : 2),
+            decoration: BoxDecoration(
+              color: highlightMessage ? highlightColor : _color,
+              borderRadius: _borderRadius(textMessage),
+            ),
+            child: isSelectable
+                ? SelectableRegion(
+                    selectionControls: CupertinoTextSelectionControls(),
+                    child: baseWidget)
+                : baseWidget),
         if (message.reaction.reactions.isNotEmpty)
           ReactionWidget(
             key: key,
@@ -122,10 +134,6 @@ class TextMessageView extends StatelessWidget {
   EdgeInsetsGeometry? get _margin => isMessageBySender
       ? outgoingChatBubbleConfig?.margin
       : inComingChatBubbleConfig?.margin;
-
-  LinkPreviewConfiguration? get _linkPreviewConfig => isMessageBySender
-      ? outgoingChatBubbleConfig?.linkPreviewConfig
-      : inComingChatBubbleConfig?.linkPreviewConfig;
 
   TextStyle? get _textStyle => isMessageBySender
       ? outgoingChatBubbleConfig?.textStyle
